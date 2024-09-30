@@ -201,7 +201,7 @@
     </style>
   </head>
   <body>
-    <h1>Logs das Requisições e Respostas</h1>
+    <h1>Log View Request / Response</h1>
     <div id="logs"></div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -218,13 +218,13 @@
 
         if (!requestId) {
           console.error(
-            'Log data não contém "requestId". Não é possível relacionar requisição e resposta.'
+            'Log data não contém "requestId". Não é possível relacionar request e response.'
           );
           return;
         }
 
         if (!logsById[requestId]) {
-          // Criar nova entrada de log para a requisição
+          // Criar nova entrada de log para a request
           if (type === "REQUEST") {
             const logEntry = document.createElement("div");
             logEntry.classList.add("log-entry");
@@ -297,11 +297,11 @@
               responseData: null,
             };
 
-            // Preencher detalhes da requisição
+            // Preencher detalhes da request
             populateRequestDetails(logsById[requestId]);
           }
         } else {
-          // Atualizar entrada de log existente quando a resposta chegar
+          // Atualizar entrada de log existente quando a response chegar
           if (type === "RESPONSE") {
             const logItem = logsById[requestId];
             logItem.responseData = logData.logData;
@@ -316,7 +316,7 @@
             statusTag.textContent = status;
             logItem.logSummary.appendChild(statusTag);
 
-            // Preencher detalhes da resposta
+            // Preencher detalhes da response
             populateResponseDetails(logItem);
           }
         }
@@ -325,16 +325,16 @@
       function populateRequestDetails(logItem) {
         const { logDetails, requestData } = logItem;
 
-        // Criar container dos detalhes da requisição
+        // Criar container dos detalhes da request
         const requestContainer = document.createElement("div");
         requestContainer.classList.add("details-container");
 
         // Título da seção
         const requestTitle = document.createElement("h3");
-        requestTitle.textContent = "Requisição";
+        requestTitle.textContent = "Request";
         requestContainer.appendChild(requestTitle);
 
-        // Criar abas da requisição
+        // Criar abas da request
         const requestTabMenu = document.createElement("div");
         requestTabMenu.classList.add("tab-menu");
 
@@ -356,7 +356,7 @@
           requestTabs.push({ button: tabButton, content: contentElement });
         }
 
-        // Aba de Payload da Requisição
+        // Aba de Payload da request
         const payloadContent = document.createElement("div");
         payloadContent.classList.add("tab-content");
         if (requestData.data) {
@@ -366,7 +366,7 @@
         }
         createRequestTab("Payload", payloadContent);
 
-        // Aba de Headers da Requisição
+        // Aba de Headers da request
         const headersContent = document.createElement("div");
         headersContent.classList.add("tab-content");
         const headers = requestData.headers || {};
@@ -390,16 +390,16 @@
       function populateResponseDetails(logItem) {
         const { logDetails, responseData } = logItem;
 
-        // Criar container dos detalhes da resposta
+        // Criar container dos detalhes da response
         const responseContainer = document.createElement("div");
         responseContainer.classList.add("details-container");
 
         // Título da seção
         const responseTitle = document.createElement("h3");
-        responseTitle.textContent = "Resposta";
+        responseTitle.textContent = "Response";
         responseContainer.appendChild(responseTitle);
 
-        // Criar abas da resposta
+        // Criar abas da response
         const responseTabMenu = document.createElement("div");
         responseTabMenu.classList.add("tab-menu");
 
@@ -421,7 +421,7 @@
           responseTabs.push({ button: tabButton, content: contentElement });
         }
 
-        // Aba de Payload da Resposta
+        // Aba de Payload da response
         const payloadContent = document.createElement("div");
         payloadContent.classList.add("tab-content");
         if (responseData.data) {
@@ -431,7 +431,7 @@
         }
         createResponseTab("Response", payloadContent);
 
-        // Aba de Headers da Resposta
+        // Aba de Headers da response
         const headersContent = document.createElement("div");
         headersContent.classList.add("tab-content");
         const headers = responseData.headers || {};
@@ -449,7 +449,7 @@
           responseContainer.appendChild(t.content);
         });
 
-        // Adicionar os detalhes da resposta abaixo dos detalhes da requisição
+        // Adicionar os detalhes da response abaixo dos detalhes da request
         logDetails.appendChild(responseContainer);
       }
 
