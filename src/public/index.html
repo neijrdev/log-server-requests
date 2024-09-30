@@ -83,7 +83,6 @@
       }
 
       .loading-indicator {
-        margin-left: auto;
         width: 16px;
         height: 16px;
         border: 2px solid #f3f3f3;
@@ -99,6 +98,21 @@
         100% {
           transform: rotate(360deg);
         }
+      }
+
+      .cancel-btn {
+        margin-left: 10px;
+        padding: 5px 10px;
+        background-color: #f44336;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+
+      .cancel-btn:hover {
+        background-color: #e53935;
       }
 
       .log-details {
@@ -280,11 +294,18 @@
             const loadingIndicator = document.createElement("div");
             loadingIndicator.classList.add("loading-indicator");
 
+            // Botão de cancelamento
+            const cancelButton = document.createElement("button");
+            cancelButton.classList.add("cancel-btn");
+            cancelButton.textContent = "Cancelar";
+            cancelButton.onclick = () => cancelRequest(requestId);
+
             // Montar linha resumida
             logSummary.appendChild(expandIcon);
             logSummary.appendChild(methodTag);
             logSummary.appendChild(urlText);
             logSummary.appendChild(loadingIndicator);
+            logSummary.appendChild(cancelButton);
 
             // Seção de detalhes
             const logDetails = document.createElement("div");
@@ -314,6 +335,7 @@
               logSummary,
               logDetails,
               loadingIndicator,
+              cancelButton,
               requestData: logData.logData,
               responseData: null,
             };
@@ -327,8 +349,9 @@
             const logItem = logsById[requestId];
             logItem.responseData = logData.logData;
 
-            // Remover indicador de carregamento
+            // Remover indicador de carregamento e botão de cancelamento
             logItem.loadingIndicator.remove();
+            logItem.cancelButton.remove();
 
             // Adicionar tag de status
             const status = logData.logData.status || "";
@@ -342,6 +365,23 @@
           }
         }
       });
+
+      function cancelRequest(requestId) {
+        console.log(`Request com ID ${requestId} cancelada`);
+        const logItem = logsById[requestId];
+
+        // Remover o indicador de carregamento e botão de cancelamento
+        if (logItem) {
+          logItem.loadingIndicator.remove();
+          logItem.cancelButton.remove();
+
+          // Atualizar log para indicar cancelamento
+          const statusTag = document.createElement("span");
+          statusTag.classList.add("status-tag");
+          statusTag.textContent = "Cancelado";
+          logItem.logSummary.appendChild(statusTag);
+        }
+      }
 
       function populateRequestDetails(logItem) {
         const { logDetails, requestData } = logItem;
