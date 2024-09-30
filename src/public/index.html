@@ -37,16 +37,6 @@
         cursor: pointer;
       }
 
-      .type-tag {
-        background-color: #e0e0e0;
-        color: #333;
-        padding: 2px 6px;
-        border-radius: 4px;
-        margin-right: 5px;
-        text-transform: uppercase;
-        font-size: 12px;
-      }
-
       .method-tag {
         padding: 2px 6px;
         border-radius: 4px;
@@ -81,7 +71,7 @@
         color: #333;
         padding: 2px 6px;
         border-radius: 4px;
-        margin-right: 5px;
+        margin-left: 5px;
         font-size: 12px;
       }
 
@@ -89,6 +79,26 @@
         color: #000;
         font-size: 12px;
         word-break: break-all;
+        margin-left: 5px;
+      }
+
+      .loading-indicator {
+        margin-left: auto;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #555;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
       }
 
       .log-details {
@@ -197,166 +207,251 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
       const socket = io();
+      const logsById = {}; // Objeto para manter o controle dos logs por ID único
 
       // Listener para eventos 'log'
       socket.on("log", (logData) => {
         const logContainer = document.getElementById("logs");
 
-        // Cria o elemento do log
-        const logEntry = document.createElement("div");
-        logEntry.classList.add("log-entry");
-
-        // Cria a linha resumida
-        const logSummary = document.createElement("div");
-        logSummary.classList.add("log-summary");
-
-        // Cria o ícone de expandir/recolher
-        const expandIcon = document.createElement("span");
-        expandIcon.classList.add("expand-icon");
-        expandIcon.textContent = "▶";
-
         const type = logData.type.toUpperCase();
-        const method = (
-          logData.logData.method ||
-          (logData.logData.config && logData.logData.config.method) ||
-          ""
-        ).toUpperCase();
-        const status = logData.logData.status || "";
-        const url =
-          logData.logData.url ||
-          (logData.logData.config && logData.logData.config.url) ||
-          "";
+        const requestId = logData.logData.requestId; // Obter o requestId
 
-        // Cria as tags
-        const typeTag = document.createElement("span");
-        typeTag.classList.add("type-tag");
-        typeTag.textContent = type;
-
-        const methodTag = document.createElement("span");
-        const methodLower = method.toLowerCase();
-        const validMethods = ["get", "post", "put", "delete"];
-        const methodClass = validMethods.includes(methodLower)
-          ? methodLower
-          : "other";
-        methodTag.classList.add("method-tag", methodClass);
-        methodTag.textContent = method;
-
-        const statusTag = document.createElement("span");
-        statusTag.classList.add("status-tag");
-        statusTag.textContent = status;
-
-        const urlText = document.createElement("span");
-        urlText.classList.add("url-text");
-        urlText.textContent = url;
-
-        // Monta a linha resumida
-        logSummary.appendChild(expandIcon);
-        logSummary.appendChild(typeTag);
-        logSummary.appendChild(methodTag);
-        if (status) {
-          logSummary.appendChild(statusTag);
+        if (!requestId) {
+          console.error(
+            'Log data não contém "requestId". Não é possível relacionar requisição e resposta.'
+          );
+          return;
         }
-        logSummary.appendChild(urlText);
 
-        // Cria a seção de detalhes
-        const logDetails = document.createElement("div");
-        logDetails.classList.add("log-details");
+        if (!logsById[requestId]) {
+          // Criar nova entrada de log para a requisição
+          if (type === "REQUEST") {
+            const logEntry = document.createElement("div");
+            logEntry.classList.add("log-entry");
 
-        // Cria o container dos detalhes
-        const detailsContainer = document.createElement("div");
-        detailsContainer.classList.add("details-container");
+            // Criar linha resumida
+            const logSummary = document.createElement("div");
+            logSummary.classList.add("log-summary");
 
-        // Cria as abas
-        const tabMenu = document.createElement("div");
-        tabMenu.classList.add("tab-menu");
+            // Ícone de expandir/recolher
+            const expandIcon = document.createElement("span");
+            expandIcon.classList.add("expand-icon");
+            expandIcon.textContent = "▶";
 
-        const tabs = [];
+            const method = (logData.logData.method || "").toUpperCase();
+            const url = logData.logData.url || "";
+
+            // Criar tags
+            const methodTag = document.createElement("span");
+            const methodLower = method.toLowerCase();
+            const validMethods = ["get", "post", "put", "delete"];
+            const methodClass = validMethods.includes(methodLower)
+              ? methodLower
+              : "other";
+            methodTag.classList.add("method-tag", methodClass);
+            methodTag.textContent = method;
+
+            const urlText = document.createElement("span");
+            urlText.classList.add("url-text");
+            urlText.textContent = url;
+
+            // Indicador de carregamento (spinner)
+            const loadingIndicator = document.createElement("div");
+            loadingIndicator.classList.add("loading-indicator");
+
+            // Montar linha resumida
+            logSummary.appendChild(expandIcon);
+            logSummary.appendChild(methodTag);
+            logSummary.appendChild(urlText);
+            logSummary.appendChild(loadingIndicator);
+
+            // Seção de detalhes
+            const logDetails = document.createElement("div");
+            logDetails.classList.add("log-details");
+
+            // Toggle dos detalhes ao clicar na linha resumida
+            logSummary.addEventListener("click", () => {
+              if (
+                logDetails.style.display === "none" ||
+                !logDetails.style.display
+              ) {
+                logDetails.style.display = "block";
+                expandIcon.textContent = "▼";
+              } else {
+                logDetails.style.display = "none";
+                expandIcon.textContent = "▶";
+              }
+            });
+
+            logEntry.appendChild(logSummary);
+            logEntry.appendChild(logDetails);
+            logContainer.appendChild(logEntry);
+
+            // Armazenar entrada de log
+            logsById[requestId] = {
+              logEntry,
+              logSummary,
+              logDetails,
+              loadingIndicator,
+              requestData: logData.logData,
+              responseData: null,
+            };
+
+            // Preencher detalhes da requisição
+            populateRequestDetails(logsById[requestId]);
+          }
+        } else {
+          // Atualizar entrada de log existente quando a resposta chegar
+          if (type === "RESPONSE") {
+            const logItem = logsById[requestId];
+            logItem.responseData = logData.logData;
+
+            // Remover indicador de carregamento
+            logItem.loadingIndicator.remove();
+
+            // Adicionar tag de status
+            const status = logData.logData.status || "";
+            const statusTag = document.createElement("span");
+            statusTag.classList.add("status-tag");
+            statusTag.textContent = status;
+            logItem.logSummary.appendChild(statusTag);
+
+            // Preencher detalhes da resposta
+            populateResponseDetails(logItem);
+          }
+        }
+      });
+
+      function populateRequestDetails(logItem) {
+        const { logDetails, requestData } = logItem;
+
+        // Criar container dos detalhes da requisição
+        const requestContainer = document.createElement("div");
+        requestContainer.classList.add("details-container");
+
+        // Título da seção
+        const requestTitle = document.createElement("h3");
+        requestTitle.textContent = "Requisição";
+        requestContainer.appendChild(requestTitle);
+
+        // Criar abas da requisição
+        const requestTabMenu = document.createElement("div");
+        requestTabMenu.classList.add("tab-menu");
+
+        const requestTabs = [];
 
         // Função auxiliar para criar uma aba
-        function createTab(title, contentElement) {
+        function createRequestTab(title, contentElement) {
           const tabButton = document.createElement("button");
           tabButton.textContent = title;
           tabButton.addEventListener("click", () => {
-            tabs.forEach((t) => {
+            requestTabs.forEach((t) => {
               t.button.classList.remove("active");
               t.content.classList.remove("active");
             });
             tabButton.classList.add("active");
             contentElement.classList.add("active");
           });
-          tabMenu.appendChild(tabButton);
-          tabs.push({ button: tabButton, content: contentElement });
+          requestTabMenu.appendChild(tabButton);
+          requestTabs.push({ button: tabButton, content: contentElement });
         }
 
-        // Abas para REQUEST e RESPONSE
-        if (type === "REQUEST") {
-          // Headers
-          const headersContent = document.createElement("div");
-          headersContent.classList.add("tab-content");
-          const headers = logData.logData.headers || {};
-          headersContent.appendChild(createTableFromObject(headers));
-          createTab("Headers", headersContent);
+        // Aba de Payload da Requisição
+        const payloadContent = document.createElement("div");
+        payloadContent.classList.add("tab-content");
+        if (requestData.data) {
+          payloadContent.appendChild(createHighlightedJSON(requestData.data));
+        } else {
+          payloadContent.textContent = "";
+        }
+        createRequestTab("Payload", payloadContent);
 
-          // Config
-          const configContent = document.createElement("div");
-          configContent.classList.add("tab-content");
-          configContent.appendChild(createHighlightedJSON(logData.logData));
-          createTab("Config", configContent);
+        // Aba de Headers da Requisição
+        const headersContent = document.createElement("div");
+        headersContent.classList.add("tab-content");
+        const headers = requestData.headers || {};
+        headersContent.appendChild(createTableFromObject(headers));
+        createRequestTab("Headers", headersContent);
+
+        // Ativar a primeira aba por padrão
+        if (requestTabs.length > 0) {
+          requestTabs[0].button.classList.add("active");
+          requestTabs[0].content.classList.add("active");
         }
 
-        if (type === "RESPONSE") {
-          // Headers
-          const headersContent = document.createElement("div");
-          headersContent.classList.add("tab-content");
-          const headers = logData.logData.headers || {};
-          headersContent.appendChild(createTableFromObject(headers));
-          createTab("Headers", headersContent);
-
-          // Data
-          const dataContent = document.createElement("div");
-          dataContent.classList.add("tab-content");
-          dataContent.appendChild(createHighlightedJSON(logData.logData.data));
-          createTab("Response", dataContent);
-
-          // Config
-          const configContent = document.createElement("div");
-          configContent.classList.add("tab-content");
-          configContent.appendChild(
-            createHighlightedJSON(logData.logData.config)
-          );
-          createTab("Config", configContent);
-        }
-
-        // Ativa a primeira aba por padrão
-        if (tabs.length > 0) {
-          tabs[0].button.classList.add("active");
-          tabs[0].content.classList.add("active");
-        }
-
-        // Monta o container dos detalhes
-        detailsContainer.appendChild(tabMenu);
-        tabs.forEach((t) => {
-          detailsContainer.appendChild(t.content);
+        requestContainer.appendChild(requestTabMenu);
+        requestTabs.forEach((t) => {
+          requestContainer.appendChild(t.content);
         });
 
-        logDetails.appendChild(detailsContainer);
+        logDetails.appendChild(requestContainer);
+      }
 
-        // Toggle dos detalhes ao clicar na linha resumida
-        logSummary.addEventListener("click", () => {
-          if (logDetails.style.display === "none") {
-            logDetails.style.display = "block";
-            expandIcon.textContent = "▼";
-          } else {
-            logDetails.style.display = "none";
-            expandIcon.textContent = "▶";
-          }
+      function populateResponseDetails(logItem) {
+        const { logDetails, responseData } = logItem;
+
+        // Criar container dos detalhes da resposta
+        const responseContainer = document.createElement("div");
+        responseContainer.classList.add("details-container");
+
+        // Título da seção
+        const responseTitle = document.createElement("h3");
+        responseTitle.textContent = "Resposta";
+        responseContainer.appendChild(responseTitle);
+
+        // Criar abas da resposta
+        const responseTabMenu = document.createElement("div");
+        responseTabMenu.classList.add("tab-menu");
+
+        const responseTabs = [];
+
+        // Função auxiliar para criar uma aba
+        function createResponseTab(title, contentElement) {
+          const tabButton = document.createElement("button");
+          tabButton.textContent = title;
+          tabButton.addEventListener("click", () => {
+            responseTabs.forEach((t) => {
+              t.button.classList.remove("active");
+              t.content.classList.remove("active");
+            });
+            tabButton.classList.add("active");
+            contentElement.classList.add("active");
+          });
+          responseTabMenu.appendChild(tabButton);
+          responseTabs.push({ button: tabButton, content: contentElement });
+        }
+
+        // Aba de Payload da Resposta
+        const payloadContent = document.createElement("div");
+        payloadContent.classList.add("tab-content");
+        if (responseData.data) {
+          payloadContent.appendChild(createHighlightedJSON(responseData.data));
+        } else {
+          payloadContent.textContent = "";
+        }
+        createResponseTab("Response", payloadContent);
+
+        // Aba de Headers da Resposta
+        const headersContent = document.createElement("div");
+        headersContent.classList.add("tab-content");
+        const headers = responseData.headers || {};
+        headersContent.appendChild(createTableFromObject(headers));
+        createResponseTab("Headers", headersContent);
+
+        // Ativar a primeira aba por padrão
+        if (responseTabs.length > 0) {
+          responseTabs[0].button.classList.add("active");
+          responseTabs[0].content.classList.add("active");
+        }
+
+        responseContainer.appendChild(responseTabMenu);
+        responseTabs.forEach((t) => {
+          responseContainer.appendChild(t.content);
         });
 
-        logEntry.appendChild(logSummary);
-        logEntry.appendChild(logDetails);
-
-        logContainer.appendChild(logEntry);
-      });
+        // Adicionar os detalhes da resposta abaixo dos detalhes da requisição
+        logDetails.appendChild(responseContainer);
+      }
 
       // Função para criar uma tabela a partir de um objeto
       function createTableFromObject(obj) {
@@ -366,9 +461,9 @@
 
         const headerRow = document.createElement("tr");
         const thKey = document.createElement("th");
-        thKey.textContent = "Key";
+        thKey.textContent = "Chave";
         const thValue = document.createElement("th");
-        thValue.textContent = "Value";
+        thValue.textContent = "Valor";
         headerRow.appendChild(thKey);
         headerRow.appendChild(thValue);
         thead.appendChild(headerRow);
