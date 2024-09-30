@@ -1,9 +1,15 @@
 // src/server.js
 const express = require("express");
+const bodyParser = require("body-parser");
 const http = require("http");
 const { Server } = require("socket.io");
 
 const app = express();
+
+// Configurar o limite do tamanho da requisição (ex: 10mb)
+app.use(bodyParser.json({ limit: "10mb" }));
+app.use(bodyParser.urlencoded({ limit: "10mb", extended: true }));
+
 const server = http.createServer(app);
 const io = new Server(server);
 
