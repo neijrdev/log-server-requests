@@ -7,12 +7,120 @@
     <style>
       body {
         font-family: Arial, sans-serif;
+        margin: 20px;
       }
-      .log {
+
+      h1 {
+        text-align: center;
+      }
+
+      .log-entry {
         border: 1px solid #ccc;
-        margin: 10px;
+        margin: 10px auto;
         padding: 10px;
         background-color: #f9f9f9;
+        width: 80%;
+        border-radius: 5px;
+      }
+
+      .log-summary {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+      }
+
+      .expand-icon {
+        font-weight: bold;
+        margin-right: 10px;
+        cursor: pointer;
+      }
+
+      .type-tag {
+        background-color: #e0e0e0;
+        color: #333;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-right: 5px;
+        text-transform: uppercase;
+        font-size: 12px;
+      }
+
+      .method-tag {
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: #fff;
+        margin-right: 5px;
+        text-transform: uppercase;
+        font-size: 12px;
+      }
+
+      .method-tag.get {
+        background-color: #4caf50; /* Green */
+      }
+
+      .method-tag.post {
+        background-color: #2196f3; /* Blue */
+      }
+
+      .method-tag.put {
+        background-color: #ff9800; /* Orange */
+      }
+
+      .method-tag.delete {
+        background-color: #f44336; /* Red */
+      }
+
+      .method-tag.other {
+        background-color: #9e9e9e; /* Grey */
+      }
+
+      .status-tag {
+        background-color: #e0e0e0;
+        color: #333;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-right: 5px;
+        font-size: 12px;
+      }
+
+      .url-text {
+        color: #000;
+        font-size: 12px;
+        word-break: break-all;
+      }
+
+      .log-details {
+        margin-top: 10px;
+        display: none; /* Hidden by default */
+        font-size: 12px;
+      }
+
+      .expandable {
+        cursor: pointer;
+        margin-left: 10px;
+      }
+
+      .expandable:before {
+        content: "+ ";
+        font-weight: bold;
+        margin-right: 5px;
+      }
+
+      .expanded > .expandable:before {
+        content: "- ";
+      }
+
+      .nested {
+        margin-left: 20px;
+        display: none;
+      }
+
+      .expanded > .nested {
+        display: block;
+      }
+
+      .key {
+        font-weight: bold;
       }
     </style>
   </head>
@@ -24,16 +132,122 @@
     <script>
       const socket = io();
 
-      // Escuta os eventos "log" enviados via WebSocket
+      // Função para criar elementos expansíveis
+      function createExpandableElement(key, value) {
+        const container = document.createElement("div");
+
+        if (typeof value === "object" && value !== null) {
+          const summary = document.createElement("div");
+          summary.textContent = key;
+          summary.classList.add("expandable");
+          const details = document.createElement("div");
+          details.classList.add("nested");
+
+          for (const prop in value) {
+            const child = createExpandableElement(prop, value[prop]);
+            details.appendChild(child);
+          }
+
+          summary.addEventListener("click", (e) => {
+            e.stopPropagation();
+            summary.parentElement.classList.toggle("expanded");
+          });
+
+          container.appendChild(summary);
+          container.appendChild(details);
+        } else {
+          const item = document.createElement("div");
+          item.innerHTML = `<span class="key">${key}:</span> ${value}`;
+          container.appendChild(item);
+        }
+
+        return container;
+      }
+
+      // Listener para eventos 'log'
       socket.on("log", (logData) => {
         const logContainer = document.getElementById("logs");
 
-        const logElement = document.createElement("div");
-        logElement.classList.add("log");
-        logElement.innerHTML = `<strong>${logData.type.toUpperCase()}:</strong>
-          <pre>${JSON.stringify(logData.logData, null, 2)}</pre>`;
+        // Cria o elemento do log
+        const logEntry = document.createElement("div");
+        logEntry.classList.add("log-entry");
 
-        logContainer.appendChild(logElement);
+        // Cria a linha resumida
+        const logSummary = document.createElement("div");
+        logSummary.classList.add("log-summary");
+
+        // Cria o ícone de expandir/recolher
+        const expandIcon = document.createElement("span");
+        expandIcon.classList.add("expand-icon");
+        expandIcon.textContent = "+";
+
+        const type = logData.type.toUpperCase();
+        const method = (
+          logData.logData.method ||
+          (logData.logData.config && logData.logData.config.method) ||
+          ""
+        ).toUpperCase();
+        const status = logData.logData.status || "";
+        const url =
+          logData.logData.url ||
+          (logData.logData.config && logData.logData.config.url) ||
+          "";
+
+        // Cria as tags
+        const typeTag = document.createElement("span");
+        typeTag.classList.add("type-tag");
+        typeTag.textContent = type;
+
+        const methodTag = document.createElement("span");
+        const methodLower = method.toLowerCase();
+        const validMethods = ["get", "post", "put", "delete"];
+        const methodClass = validMethods.includes(methodLower)
+          ? methodLower
+          : "other";
+        methodTag.classList.add("method-tag", methodClass);
+        methodTag.textContent = method;
+
+        const statusTag = document.createElement("span");
+        statusTag.classList.add("status-tag");
+        statusTag.textContent = status;
+
+        const urlText = document.createElement("span");
+        urlText.classList.add("url-text");
+        urlText.textContent = url;
+
+        // Monta a linha resumida
+        logSummary.appendChild(expandIcon);
+        logSummary.appendChild(typeTag);
+        logSummary.appendChild(methodTag);
+        if (status) {
+          logSummary.appendChild(statusTag);
+        }
+        logSummary.appendChild(urlText);
+
+        // Cria a seção de detalhes
+        const logDetails = document.createElement("div");
+        logDetails.classList.add("log-details");
+
+        for (const key in logData.logData) {
+          const element = createExpandableElement(key, logData.logData[key]);
+          logDetails.appendChild(element);
+        }
+
+        // Toggle dos detalhes ao clicar na linha resumida
+        logSummary.addEventListener("click", () => {
+          if (logDetails.style.display === "none") {
+            logDetails.style.display = "block";
+            expandIcon.textContent = "-";
+          } else {
+            logDetails.style.display = "none";
+            expandIcon.textContent = "+";
+          }
+        });
+
+        logEntry.appendChild(logSummary);
+        logEntry.appendChild(logDetails);
+
+        logContainer.appendChild(logEntry);
       });
     </script>
   </body>
