@@ -15,22 +15,24 @@
       }
 
       .log-entry {
-        border: 1px solid #ccc;
+        border: 1px solid #ddd;
         margin: 10px auto;
-        padding: 10px;
-        background-color: #f9f9f9;
-        width: 80%;
-        border-radius: 5px;
+        width: 90%;
+        border-radius: 4px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
 
       .log-summary {
         display: flex;
         align-items: center;
+        padding: 10px;
+        background-color: #f1f1f1;
         cursor: pointer;
+        user-select: none;
       }
 
       .expand-icon {
-        font-weight: bold;
         margin-right: 10px;
         cursor: pointer;
       }
@@ -90,37 +92,72 @@
       }
 
       .log-details {
-        margin-top: 10px;
-        display: none; /* Hidden by default */
-        font-size: 12px;
-      }
-
-      .expandable {
-        cursor: pointer;
-        margin-left: 10px;
-      }
-
-      .expandable:before {
-        content: "+ ";
-        font-weight: bold;
-        margin-right: 5px;
-      }
-
-      .expanded > .expandable:before {
-        content: "- ";
-      }
-
-      .nested {
-        margin-left: 20px;
         display: none;
+        font-size: 12px;
+        background-color: #fff;
       }
 
-      .expanded > .nested {
+      .details-container {
+        padding: 10px;
+      }
+
+      /* Estilo para as abas */
+      .tab-menu {
+        display: flex;
+        border-bottom: 1px solid #ccc;
+      }
+
+      .tab-menu button {
+        background: none;
+        border: none;
+        padding: 10px 15px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+
+      .tab-menu button.active {
+        border-bottom: 2px solid #2196f3;
+        color: #2196f3;
+      }
+
+      .tab-content {
+        display: none;
+        font-family: "Courier New", Courier, monospace;
+        overflow-x: auto;
+      }
+
+      .tab-content.active {
         display: block;
       }
 
-      .key {
+      /* Estilo para tabelas */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+
+      th,
+      td {
+        text-align: left;
+        padding: 8px;
+        border-bottom: 1px solid #ddd;
+        font-family: "Courier New", Courier, monospace;
+      }
+
+      th {
+        background-color: #f9f9f9;
         font-weight: bold;
+      }
+
+      /* Estilo para JSON */
+      .json-viewer {
+        white-space: pre-wrap;
+        font-family: "Courier New", Courier, monospace;
+        background-color: #f6f8fa;
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #e1e4e8;
       }
     </style>
   </head>
@@ -131,38 +168,6 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
       const socket = io();
-
-      // Função para criar elementos expansíveis
-      function createExpandableElement(key, value) {
-        const container = document.createElement("div");
-
-        if (typeof value === "object" && value !== null) {
-          const summary = document.createElement("div");
-          summary.textContent = key;
-          summary.classList.add("expandable");
-          const details = document.createElement("div");
-          details.classList.add("nested");
-
-          for (const prop in value) {
-            const child = createExpandableElement(prop, value[prop]);
-            details.appendChild(child);
-          }
-
-          summary.addEventListener("click", (e) => {
-            e.stopPropagation();
-            summary.parentElement.classList.toggle("expanded");
-          });
-
-          container.appendChild(summary);
-          container.appendChild(details);
-        } else {
-          const item = document.createElement("div");
-          item.innerHTML = `<span class="key">${key}:</span> ${value}`;
-          container.appendChild(item);
-        }
-
-        return container;
-      }
 
       // Listener para eventos 'log'
       socket.on("log", (logData) => {
@@ -179,7 +184,7 @@
         // Cria o ícone de expandir/recolher
         const expandIcon = document.createElement("span");
         expandIcon.classList.add("expand-icon");
-        expandIcon.textContent = "+";
+        expandIcon.textContent = "▶";
 
         const type = logData.type.toUpperCase();
         const method = (
@@ -228,19 +233,91 @@
         const logDetails = document.createElement("div");
         logDetails.classList.add("log-details");
 
-        for (const key in logData.logData) {
-          const element = createExpandableElement(key, logData.logData[key]);
-          logDetails.appendChild(element);
+        // Cria o container dos detalhes
+        const detailsContainer = document.createElement("div");
+        detailsContainer.classList.add("details-container");
+
+        // Cria as abas
+        const tabMenu = document.createElement("div");
+        tabMenu.classList.add("tab-menu");
+
+        const tabs = [];
+
+        // Função auxiliar para criar uma aba
+        function createTab(title, contentElement) {
+          const tabButton = document.createElement("button");
+          tabButton.textContent = title;
+          tabButton.addEventListener("click", () => {
+            tabs.forEach((t) => {
+              t.button.classList.remove("active");
+              t.content.classList.remove("active");
+            });
+            tabButton.classList.add("active");
+            contentElement.classList.add("active");
+          });
+          tabMenu.appendChild(tabButton);
+          tabs.push({ button: tabButton, content: contentElement });
         }
+
+        // Abas para REQUEST e RESPONSE
+        if (type === "REQUEST") {
+          // Headers
+          const headersContent = document.createElement("div");
+          headersContent.classList.add("tab-content");
+          const headers = logData.logData.headers || {};
+          headersContent.appendChild(createTableFromObject(headers));
+          createTab("Headers", headersContent);
+
+          // Config
+          const configContent = document.createElement("div");
+          configContent.classList.add("tab-content");
+          configContent.appendChild(createJSONViewer(logData.logData));
+          createTab("Config", configContent);
+        }
+
+        if (type === "RESPONSE") {
+          // Headers
+          const headersContent = document.createElement("div");
+          headersContent.classList.add("tab-content");
+          const headers = logData.logData.headers || {};
+          headersContent.appendChild(createTableFromObject(headers));
+          createTab("Headers", headersContent);
+
+          // Data
+          const dataContent = document.createElement("div");
+          dataContent.classList.add("tab-content");
+          dataContent.appendChild(createJSONViewer(logData.logData.data));
+          createTab("Response", dataContent);
+
+          // Config
+          const configContent = document.createElement("div");
+          configContent.classList.add("tab-content");
+          configContent.appendChild(createJSONViewer(logData.logData.config));
+          createTab("Config", configContent);
+        }
+
+        // Ativa a primeira aba por padrão
+        if (tabs.length > 0) {
+          tabs[0].button.classList.add("active");
+          tabs[0].content.classList.add("active");
+        }
+
+        // Monta o container dos detalhes
+        detailsContainer.appendChild(tabMenu);
+        tabs.forEach((t) => {
+          detailsContainer.appendChild(t.content);
+        });
+
+        logDetails.appendChild(detailsContainer);
 
         // Toggle dos detalhes ao clicar na linha resumida
         logSummary.addEventListener("click", () => {
           if (logDetails.style.display === "none") {
             logDetails.style.display = "block";
-            expandIcon.textContent = "-";
+            expandIcon.textContent = "▼";
           } else {
             logDetails.style.display = "none";
-            expandIcon.textContent = "+";
+            expandIcon.textContent = "▶";
           }
         });
 
@@ -249,6 +326,46 @@
 
         logContainer.appendChild(logEntry);
       });
+
+      // Função para criar uma tabela a partir de um objeto
+      function createTableFromObject(obj) {
+        const table = document.createElement("table");
+        const thead = document.createElement("thead");
+        const tbody = document.createElement("tbody");
+
+        const headerRow = document.createElement("tr");
+        const thKey = document.createElement("th");
+        thKey.textContent = "Key";
+        const thValue = document.createElement("th");
+        thValue.textContent = "Value";
+        headerRow.appendChild(thKey);
+        headerRow.appendChild(thValue);
+        thead.appendChild(headerRow);
+
+        for (const key in obj) {
+          const row = document.createElement("tr");
+          const tdKey = document.createElement("td");
+          tdKey.textContent = key;
+          const tdValue = document.createElement("td");
+          tdValue.textContent = obj[key];
+          row.appendChild(tdKey);
+          row.appendChild(tdValue);
+          tbody.appendChild(row);
+        }
+
+        table.appendChild(thead);
+        table.appendChild(tbody);
+
+        return table;
+      }
+
+      // Função para criar um visualizador de JSON
+      function createJSONViewer(jsonData) {
+        const pre = document.createElement("pre");
+        pre.classList.add("json-viewer");
+        pre.textContent = JSON.stringify(jsonData, null, 2);
+        return pre;
+      }
     </script>
   </body>
 </html>
