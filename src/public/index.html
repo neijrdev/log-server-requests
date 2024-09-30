@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -150,14 +150,43 @@
         font-weight: bold;
       }
 
-      /* Estilo para JSON */
+      /* Estilo para JSON com syntax highlighting */
       .json-viewer {
         white-space: pre-wrap;
         font-family: "Courier New", Courier, monospace;
-        background-color: #f6f8fa;
+        background-color: #fff;
         padding: 10px;
         border-radius: 4px;
         border: 1px solid #e1e4e8;
+        color: #333;
+      }
+
+      .json-key {
+        color: #92278f; /* Roxo para chaves */
+      }
+
+      .json-string {
+        color: #3ab54a; /* Verde para strings */
+      }
+
+      .json-number {
+        color: #25aae1; /* Azul para números */
+      }
+
+      .json-boolean {
+        color: #f9826c; /* Laranja para booleanos */
+      }
+
+      .json-null {
+        color: #f9826c; /* Laranja para null */
+      }
+
+      .json-brace {
+        color: #555; /* Cinza para chaves e colchetes */
+      }
+
+      .json-comma {
+        color: #555; /* Cinza para vírgulas */
       }
     </style>
   </head>
@@ -271,7 +300,7 @@
           // Config
           const configContent = document.createElement("div");
           configContent.classList.add("tab-content");
-          configContent.appendChild(createJSONViewer(logData.logData));
+          configContent.appendChild(createHighlightedJSON(logData.logData));
           createTab("Config", configContent);
         }
 
@@ -286,13 +315,15 @@
           // Data
           const dataContent = document.createElement("div");
           dataContent.classList.add("tab-content");
-          dataContent.appendChild(createJSONViewer(logData.logData.data));
+          dataContent.appendChild(createHighlightedJSON(logData.logData.data));
           createTab("Response", dataContent);
 
           // Config
           const configContent = document.createElement("div");
           configContent.classList.add("tab-content");
-          configContent.appendChild(createJSONViewer(logData.logData.config));
+          configContent.appendChild(
+            createHighlightedJSON(logData.logData.config)
+          );
           createTab("Config", configContent);
         }
 
@@ -359,12 +390,42 @@
         return table;
       }
 
-      // Função para criar um visualizador de JSON
-      function createJSONViewer(jsonData) {
+      // Função para criar um visualizador de JSON com syntax highlighting
+      function createHighlightedJSON(jsonData) {
         const pre = document.createElement("pre");
         pre.classList.add("json-viewer");
-        pre.textContent = JSON.stringify(jsonData, null, 2);
+        pre.innerHTML = syntaxHighlight(JSON.stringify(jsonData, null, 2));
         return pre;
+      }
+
+      // Função para aplicar syntax highlighting em JSON
+      function syntaxHighlight(json) {
+        json = json
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+        return json.replace(
+          /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|\b\d+\.?\d*\b|\{|\}|\[|\]|,)/g,
+          function (match) {
+            let cls = "json-number";
+            if (/^"/.test(match)) {
+              if (/:$/.test(match)) {
+                cls = "json-key";
+              } else {
+                cls = "json-string";
+              }
+            } else if (/true|false/.test(match)) {
+              cls = "json-boolean";
+            } else if (/null/.test(match)) {
+              cls = "json-null";
+            } else if (/\{|\}|\[|\]/.test(match)) {
+              cls = "json-brace";
+            } else if (/\,/.test(match)) {
+              cls = "json-comma";
+            }
+            return '<span class="' + cls + '">' + match + "</span>";
+          }
+        );
       }
     </script>
   </body>
