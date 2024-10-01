@@ -26,10 +26,21 @@
       .log-summary {
         display: flex;
         align-items: center;
+        justify-content: space-between;
         padding: 10px;
         background-color: #f1f1f1;
         cursor: pointer;
         user-select: none;
+      }
+
+      .left-content {
+        display: flex;
+        align-items: center;
+      }
+
+      .right-content {
+        display: flex;
+        align-items: center;
       }
 
       .expand-icon {
@@ -71,7 +82,7 @@
         color: #333;
         padding: 2px 6px;
         border-radius: 4px;
-        margin-left: 5px;
+        margin-right: 10px;
         font-size: 12px;
       }
 
@@ -114,6 +125,26 @@
 
       .cancel-btn:hover {
         background-color: #e53935;
+      }
+
+      .delete-btn {
+        padding: 5px 10px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+        color: #555;
+        display: flex;
+        align-items: center;
+      }
+
+      .delete-btn:hover {
+        color: #f44336;
+      }
+
+      .delete-btn .trash-icon {
+        margin-left: 5px;
+        font-size: 16px;
       }
 
       .log-details {
@@ -269,6 +300,13 @@
             const logSummary = document.createElement("div");
             logSummary.classList.add("log-summary");
 
+            // Containers para alinhamento
+            const leftContent = document.createElement("div");
+            leftContent.classList.add("left-content");
+
+            const rightContent = document.createElement("div");
+            rightContent.classList.add("right-content");
+
             // Ícone de expandir/recolher
             const expandIcon = document.createElement("span");
             expandIcon.classList.add("expand-icon");
@@ -299,14 +337,34 @@
             const cancelButton = document.createElement("button");
             cancelButton.classList.add("cancel-btn");
             cancelButton.textContent = "Cancelar";
-            cancelButton.onclick = () => cancelRequest(requestId);
+            cancelButton.onclick = (e) => {
+              e.stopPropagation(); // Impede o toggle dos detalhes
+              cancelRequest(requestId);
+            };
+
+            // Montar conteúdo da esquerda
+            leftContent.appendChild(expandIcon);
+            leftContent.appendChild(methodTag);
+            leftContent.appendChild(urlText);
+            leftContent.appendChild(loadingIndicator);
+            leftContent.appendChild(cancelButton);
+
+            // Botão de excluir com ícone de lixeira
+            const deleteButton = document.createElement("button");
+            deleteButton.classList.add("delete-btn");
+            deleteButton.innerHTML =
+              'Excluir <span class="trash-icon">&#128465;</span>';
+            deleteButton.onclick = (e) => {
+              e.stopPropagation(); // Impede o toggle dos detalhes
+              deleteLogEntry(requestId);
+            };
+
+            // Montar conteúdo da direita
+            rightContent.appendChild(deleteButton);
 
             // Montar linha resumida
-            logSummary.appendChild(expandIcon);
-            logSummary.appendChild(methodTag);
-            logSummary.appendChild(urlText);
-            logSummary.appendChild(loadingIndicator);
-            logSummary.appendChild(cancelButton);
+            logSummary.appendChild(leftContent);
+            logSummary.appendChild(rightContent);
 
             // Seção de detalhes
             const logDetails = document.createElement("div");
@@ -335,8 +393,11 @@
               logEntry,
               logSummary,
               logDetails,
+              leftContent,
+              rightContent,
               loadingIndicator,
               cancelButton,
+              deleteButton,
               requestData: logData.logData,
               responseData: null,
             };
@@ -359,7 +420,7 @@
             const statusTag = document.createElement("span");
             statusTag.classList.add("status-tag");
             statusTag.textContent = status;
-            logItem.logSummary.appendChild(statusTag);
+            logItem.rightContent.insertBefore(statusTag, logItem.deleteButton);
 
             // Preencher detalhes da response
             populateResponseDetails(logItem);
@@ -380,7 +441,18 @@
           const statusTag = document.createElement("span");
           statusTag.classList.add("status-tag");
           statusTag.textContent = "Cancelado";
-          logItem.logSummary.appendChild(statusTag);
+          logItem.rightContent.insertBefore(statusTag, logItem.deleteButton);
+        }
+      }
+
+      function deleteLogEntry(requestId) {
+        console.log(`Log de request com ID ${requestId} foi excluído`);
+        const logItem = logsById[requestId];
+
+        // Remover a entrada de log da interface
+        if (logItem) {
+          logItem.logEntry.remove();
+          delete logsById[requestId]; // Remover do objeto logsById
         }
       }
 
